@@ -53,7 +53,6 @@ import get_date_from_url
 
 if location == "home":
   import urllib.request as ur 
-  from bs4 import BeautifulSoup
 if location == "work":
   import urllib
 
