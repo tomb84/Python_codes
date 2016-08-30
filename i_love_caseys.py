@@ -4,6 +4,7 @@
 # Python code to read Casey's Times
 #
 #
+##############################################
 def remove_html_markup(s):
     tag = False
     quote = False
@@ -20,6 +21,8 @@ def remove_html_markup(s):
                 out = out + c
 
     return out
+    
+    
 
 def cleanhtml(raw_html):
   cleanr =re.compile('<.*?>')
@@ -33,71 +36,123 @@ def is_number(s):
     except ValueError:
         return False
 
+def get_max_name_length(np_names_week):
+    maxl=10
+    for i in range (0,len(np_names_week)):
+      if len(np_names_week[i]) > maxl:
+        maxl=len(np_names_week[i])
+    print (maxl)    
+    return maxl    
+    
+
 import re
-import urllib
+from bs4 import BeautifulSoup
+import datetime
+import urllib.request as ur
+import numpy as np
 
-link = 'http://www.srr.org/events/thursday-night-run/2016/2016.01.28.htm'
+#Looping over the different weeks in each year
+### THIS CODE WILL HELP US TO READ IN THE URL 
+### AND THEN TO LOOP OVER THE URL
+ann_link='http://www.srr.org/events/thursday-night-run/2016/'
+page = ur.urlopen(ann_link)
+page_html = page.read()
+tmp = str(page_html,'utf-8')
+soup = BeautifulSoup(page_html, 'html.parser')
+url_links=([])
+for a in soup.find_all('a', href=True):
+    url_links.append(ann_link+a['href'])
+print (url_links)
+###############################################
 
-#f = urllib.urlopen(link)           
-#myfile = f.readline()  
-#print myfile
+#This is the web page to read from
+#link = 'http://www.srr.org/events/thursday-night-run/2016/2016.01.28.htm'
+link = url_links[5]
 
-source = urllib.urlopen(link)
-page = source.read()
+#now pull out the date from the url info
+datex=link.replace('.htm','')
+datex=link.replace('.html','')
+datex=datex.split('/')
+datex2=datex[6]
+datex2=datex2.split('.')
+if len(datex2) == 1:
+    datex2=datex2[0].split('-')
+run_date = (datetime.date(int(datex2[0]),int(datex2[1]),int(datex2[2])))
 
-cleantext = remove_html_markup(page)
+###Read the raw html code from the webpage
+###  -- This does not work on local pc 
+#source = urllib.urlopen(link)
+#page = source.read()
 
-#THIS METHOD WORKS OK
-#import requests
-#f = requests.get(link)
-#print f.text
+page = ur.urlopen(link)
+page_html = page.read()
 
-#clean=cleanhtml(f.text)
-#Beautiful soup does not work as the package is not available
-#from BeautifulSoup import BeautifulSoup
-#cleantext = BeautifulSoup(f).text
+#Use the below with beautiful soup
+#print (page_html)
+#soup = BeautifulSoup(page_html, 'html.parser')
+#tmp = soup.split("\n")
 
-##clear the html text
-#cleantext = remove_html_markup(tmp)
+#Clean the html text 
+tmp = str(page_html,'utf-8') #You need this on a windows pc
+cleantext = remove_html_markup(tmp)
 
-#print cleantext
-##clear the html text
-#mytext=f.text
-#mytext.replace("City","")
-#cleantext = remove_html_markup(mytext)
+#divide up the text
+tmp2 = cleantext.split("\n")
 
-#print cleantext
-#print len(cleantext)
+#find the first athlete
+try:
+  start = tmp2.index('  Notes')+1
+except ValueError:
+  start=-1
+if start == -1:  
+  try:
+    start = tmp2.index('              Notes')+1
+  except ValueError:
+    start=-1
 
-#cleantext.replace("&nbsp;","")
-#cleantext.replace("Name","")
-#cleantext.replace("Time","")
-#cleantext.replace("Notes","")
+np_names_week =np.array([]) #initialize data_tmp 
+np_towns_week =np.array([])
+np_times_week =np.array([])
 
-tmp = cleantext.split("\n")
-#tmp = filter(' ', tmp) # fastest
-#tmp.lstrip()
-
-#print len(tmp)
-print tmp
-print len(tmp)
-
-#print f.text
-start = tmp.index('  Notes')+1
-#print start
-
-n_athletes = len(tmp)
+#now loop over the number of athletes
+n_athletes = len(tmp2)
 for p in range(start,n_athletes) :
-  x=tmp[p]
+  x=tmp2[p]
   y=x.strip()
   z=y.lstrip()
   xyz=z.split(":")
-  test=xyz[0] 
- 
-  #print is_number(test)
-  if(is_number(test)) :
-    print tmp[p-1],tmp[p],tmp[p+1]
-
-   #The probelm is that the code does not understand the : = can't convert to float so use
   
+  #only test for a number if xyz has 2 elements == otherwise this is age
+  if len(xyz) > 1 :  
+    test=xyz[0] 
+ 
+    #check if element contain a time is_number(test)
+    if(is_number(test)) :  
+      print( tmp2[p-1],tmp2[p],tmp2[p+1])
+      #We cannot rm whitspace from a list
+      tmpname=tmp2[p-1]
+      tmpname=tmpname.lstrip()
+      tmpname=tmpname.lstrip()
+      tmptown=tmp2[p+1]
+      tmptown=tmptown.lstrip()
+      tmptown=tmptown.rstrip()
+      np_names_week=np.append(np_names_week,tmpname)
+      np_towns_week=np.append(np_towns_week,tmptown)
+    
+    
+      #For the time we need to time hh:mm:ss format
+      m,s = re.split(':',tmp2[p])
+      h=0
+      if int(m) < 21: #if mins time < 21 then set hours =1
+        h = 1      
+      np_times_week=np.append(np_times_week,datetime.time(h,int(m),int(s)))    
+
+#get max length of names string
+maxl=get_max_name_length(np_names_week)
+
+#print the resuls in      
+for i in range (0,len(np_names_week)) :    
+    print ('{:<{}s}'.format(np_names_week[i],maxl),np_times_week[i],run_date)
+
+print (url_links)
 #print f.text
