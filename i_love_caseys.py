@@ -1,10 +1,7 @@
 
-#
-#
 # Python code to read Casey's Times
-#
-#
-##############################################
+#########################################
+
 def remove_html_markup(s):
     tag = False
     quote = False
@@ -19,140 +16,180 @@ def remove_html_markup(s):
                 quote = not quote
             elif not tag:
                 out = out + c
-
     return out
     
-    
-
-def cleanhtml(raw_html):
-  cleanr =re.compile('<.*?>')
-  cleantext = re.sub(cleanr,'', raw_html)
-  return cleantext
-
-def is_number(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
-
 def get_max_name_length(np_names_week):
-    maxl=10
+    maxl=10 #initialize to 10 
     for i in range (0,len(np_names_week)):
       if len(np_names_week[i]) > maxl:
         maxl=len(np_names_week[i])
     print (maxl)    
     return maxl    
-    
+
+###########################################
+#       M A I N   C O D E
+###########################################    
+
+location='work' 
+year='2016'
 
 import re
-from bs4 import BeautifulSoup
 import datetime
-import urllib.request as ur
 import numpy as np
+import is_time_format_hhmm
+import get_date_from_url
+import unicodedata
 
-#Looping over the different weeks in each year
+if location == "home":
+  import urllib.request as ur  #home
+  from bs4 import BeautifulSoup
+if location == "work":
+  import urllib
+
+###Looping over the different weeks in each year
 ### THIS CODE WILL HELP US TO READ IN THE URL 
 ### AND THEN TO LOOP OVER THE URL
-ann_link='http://www.srr.org/events/thursday-night-run/2016/'
-page = ur.urlopen(ann_link)
-page_html = page.read()
-tmp = str(page_html,'utf-8')
-soup = BeautifulSoup(page_html, 'html.parser')
-url_links=([])
-for a in soup.find_all('a', href=True):
-    url_links.append(ann_link+a['href'])
-print (url_links)
+if location == "home":
+  ann_link='http://www.srr.org/events/thursday-night-run/'+year+'/'
+  page = ur.urlopen(ann_link)
+  page_html = page.read()
+  tmp = str(page_html,'utf-8')
+  soup = BeautifulSoup(page_html, 'html.parser')
+  url_links=([])
+  for a in soup.find_all('a', href=True):
+    chktmp=(a['href'])
+    chktmp2=chktmp.split(".")
+    if len(chktmp2) > 1 :
+      url_links.append(ann_link+a['href'])
+      print (ann_link+a['href'])
+
+if location == "work":
+  if year == '2016': #This only works for 2016 so far
+    ann_link='http://www.srr.org/events/thursday-night-run/'+year+'/'
+    page = urllib.urlopen(ann_link)
+    page_html = page.read()
+    cleantext = remove_html_markup(page_html)
+    tmp2 = cleantext.split("\n")
+    #print tmp2
+    url_links=([])
+    for i in range (0,len(tmp2)):
+      x=tmp2[i]
+      x2=x.split()
+      for p in range (0,len(x2)): 
+        x3=x2[p]
+        if is_time_format_hhmm.is_time_format_hhmm(x3) :
+          url_links.append(ann_link+x2[p-2])
+
+np_names_year =np.array([]) #initialize data_tmp
+np_towns_year =np.array([])
+np_times_year =np.array([])
+nlastwk=0
+
+#loop over the url links
+#for url in url_links:
+for l in range (0,1):
+  #page = urllib.urlopen(url)
+  #page_html = page.read()
+  #cleantext = remove_html_markup(page_html)
+  #tmp2 = cleantext.split("\n")
+  #print tmp2[0:30]
+
 ###############################################
 
-#This is the web page to read from
-#link = 'http://www.srr.org/events/thursday-night-run/2016/2016.01.28.htm'
-link = url_links[5]
+  #This is the web page to read from
+  #link = 'http://www.srr.org/events/thursday-night-run/2016/2016.01.28.htm'
+  link ='http://www.srr.org/events/thursday-night-run/2016/2016.05.12.htm'
+  #link = url
+  print 'reading url :',link
 
-#now pull out the date from the url info
-datex=link.replace('.htm','')
-datex=link.replace('.html','')
-datex=datex.split('/')
-datex2=datex[6]
-datex2=datex2.split('.')
-if len(datex2) == 1:
-    datex2=datex2[0].split('-')
-run_date = (datetime.date(int(datex2[0]),int(datex2[1]),int(datex2[2])))
+  if location == "home":
+    page = ur.urlopen(link) 
+    page2 = page.read()
+    page_html = str(page2,'utf-8')        #home only
 
-###Read the raw html code from the webpage
-###  -- This does not work on local pc 
-#source = urllib.urlopen(link)
-#page = source.read()
+  if location == "work":
+    page = urllib.urlopen(link) 
+    #page2 = page.read()
+    #page_html = str(page2,'utf-8')
+    page_html = page.read()
 
-page = ur.urlopen(link)
-page_html = page.read()
+  #clean the html text
+  cleantext = remove_html_markup(page_html)
 
-#Use the below with beautiful soup
-#print (page_html)
-#soup = BeautifulSoup(page_html, 'html.parser')
-#tmp = soup.split("\n")
+  #now pull out the date from the url info
+  run_date=get_date_from_url.get_date_from_url(link)
 
-#Clean the html text 
-tmp = str(page_html,'utf-8') #You need this on a windows pc
-cleantext = remove_html_markup(tmp)
+  #divide up the text
+  tmp2 = cleantext.split("\n")
+  print tmp2
 
-#divide up the text
-tmp2 = cleantext.split("\n")
+  #strip the left and right whitespace away from each element in the list
+  tmp3 = [x.lstrip(' ') for x in tmp2]
+  tmp3 = [x.rstrip(' ') for x in tmp3]
+  text_find='Notes'
+  start = tmp3.index(text_find)+1
+  print 'found start',start
 
-#find the first athlete
-try:
-  start = tmp2.index('  Notes')+1
-except ValueError:
-  start=-1
-if start == -1:  
-  try:
-    start = tmp2.index('              Notes')+1
-  except ValueError:
-    start=-1
+  np_names_week =np.array([]) #initialize data_tmp
+  np_towns_week =np.array([])
+  np_times_week =np.array([])
 
-np_names_week =np.array([]) #initialize data_tmp 
-np_towns_week =np.array([])
-np_times_week =np.array([])
+  #now loop over the number of athletes
+  n_athletes = len(tmp2)
+  for p in range(start,n_athletes) :
+    x=tmp2[p]
+    #x=x.decode('latin-1')
+    #x = unicodedata.normalize("\xa0", x)
+    #x=x.strip()
+    #x=x.decode('ascii','ignore')
+    print x
 
-#now loop over the number of athletes
-n_athletes = len(tmp2)
-for p in range(start,n_athletes) :
-  x=tmp2[p]
-  y=x.strip()
-  z=y.lstrip()
-  xyz=z.split(":")
-  
-  #only test for a number if xyz has 2 elements == otherwise this is age
-  if len(xyz) > 1 :  
-    test=xyz[0] 
- 
-    #check if element contain a time is_number(test)
-    if(is_number(test)) :  
-      print( tmp2[p-1],tmp2[p],tmp2[p+1])
-      #We cannot rm whitspace from a list
-      tmpname=tmp2[p-1]
-      tmpname=tmpname.lstrip()
-      tmpname=tmpname.lstrip()
-      tmptown=tmp2[p+1]
-      tmptown=tmptown.lstrip()
-      tmptown=tmptown.rstrip()
-      np_names_week=np.append(np_names_week,tmpname)
-      np_towns_week=np.append(np_towns_week,tmptown)
+    if is_time_format_hhmm.is_time_format_hhmm(x) :
+      np_names_week=np.append(np_names_week,tmp3[p-1])
+      np_towns_week=np.append(np_towns_week,tmp3[p+1])
     
-    
-      #For the time we need to time hh:mm:ss format
+      #Convert time to hh:mm:ss format
       m,s = re.split(':',tmp2[p])
       h=0
       if int(m) < 21: #if mins time < 21 then set hours =1
         h = 1      
       np_times_week=np.append(np_times_week,datetime.time(h,int(m),int(s)))    
 
-#get max length of names string
-maxl=get_max_name_length(np_names_week)
 
-#print the resuls in      
-for i in range (0,len(np_names_week)) :    
+  #get max length of names string
+  maxl=get_max_name_length(np_names_week)+1
+
+  #print the resuls in      
+  for i in range (0,len(np_names_week)) :    
     print ('{:<{}s}'.format(np_names_week[i],maxl),np_times_week[i],run_date)
 
-print (url_links)
-#print f.text
+  np_names_year = np.append(np_names_year,np_names_week)
+  np_towns_year = np.append(np_towns_year,np_towns_week)
+  np_times_year = np.append(np_times_year,np_towns_week)
+
+  #Save the output to a file for a single week
+  print ''
+  fname='SRR_Caseys_results_'+str(run_date)
+  print ('Number of Runners this week=',len(np_names_week))
+  print ''
+
+  if len(np_names_week) > 0 :
+    np.savez(fname,np_names_week=np_names_week,np_times_week=np_times_week,np_towns_week=np_towns_week)
+  else :
+    print 'No file output : There is no data available for the week : ',str() 
+
+#get max length of names string
+maxl=get_max_name_length(np_names_year)
+print ('')
+print ('Number of Weeks =',len(url_links))
+print ('Total Number of Runners this year=',len(np_names_year))
+
+
+fname='SRR_Caseys_results_'+year
+np.savez(fname,np_names_year=np_names_year,np_times_year=np_times_year,np_towns_year=np_towns_year)
+
+#npzfile = np.load('SRR_Caseys_results_2016-01-28.npz')
+#npzfile.files
+#npzfile['np_names_week'] # to show an array
+
+
