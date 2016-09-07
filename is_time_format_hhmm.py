@@ -10,7 +10,7 @@ def is_time_format_hhmm(my_string):
   my_string=my_string.rstrip()      #strip the left and right white space
   tmp=my_string.split(":")  #split the string
   #only test for a number if xyz has 2 elements == otherwise this is age
-  if len(tmp) > 1 :
+  if len(tmp) > 1 and len(tmp) < 3:
     test_string=tmp[0]
     try:
         float(test_string)
